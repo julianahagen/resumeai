@@ -173,7 +173,7 @@ def start_session():
    st.session_state.agente_recepcionista_obj = criar_agente_recepcionista()
    st.session_state.current_stage = "perfil"
     # Não precisamos de st.rerun() aqui, o script vai re-executar e exibir a próxima seção
- def summarize_perfil_and_move_to_topic():
+def summarize_perfil_and_move_to_topic():
     respostas_concatenadas = "\n".join([f"{q}: {st.session_state.perfil_raw_answers[q]}" for q in st.session_state.perguntas_perfil])
     entrada_para_recepcionista = f"""
     Respostas do aluno sobre o perfil:
