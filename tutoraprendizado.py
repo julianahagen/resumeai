@@ -206,7 +206,7 @@ def generate_lesson_and_review():
         st.session_state.texto_final_aula = call_agent(st.session_state.agente_redator_obj,
                                                     entrada_para_redator)
     st.success("Aula gerada!")
-      with st.spinner("Gerando material de revisão..."):
+    with st.spinner("Gerando material de revisão..."):
         entrada_para_review = f"""
         TÓPICO: {st.session_state.topico_estudo}
         PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
