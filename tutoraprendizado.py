@@ -139,7 +139,7 @@ def criar_agente_duvidas():
         generation_config={"temperature": 0.5},
         system_instruction="Você é um agente tira-dúvidas. Sua tarefa é responder às perguntas do aluno usando as informações da aula, o perfil do aluno e, se necessário, buscando informações adicionais com `Google Search`. Seja claro e objetivo."
     )
- def criar_agente_salvador_local():
+def criar_agente_salvador_local():
     return gemini.GenerativeModel(
         model_name=MODEL_ID,
         generation_config={"temperature": 0.5},
