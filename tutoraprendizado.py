@@ -187,7 +187,7 @@ def summarize_perfil_and_move_to_topic():
     st.success("Perfil analisado!")
     st.session_state.current_stage = "topico" # Marca que o perfil foi processado e o tópico pode ser pedido
     st.rerun() # Dispara a re-execução para exibir a próxima seção
-  def generate_lesson_and_review():
+def generate_lesson_and_review():
     st.session_state.agente_buscador_obj = criar_agente_buscador()
     st.session_state.agente_redator_obj = criar_agente_redator()
     st.session_state.agente_review_obj = criar_agente_review()
