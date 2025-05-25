@@ -220,7 +220,7 @@ def generate_lesson_and_review():
     st.success("Material de revisão pronto!")
     st.session_state.current_stage = "aula_gerada" # Nova etapa para indicar que aula e resumo estão prontos
     st.rerun() # Dispara a re-execução para exibir a aula e a seção de dúvidas
-  def process_duvida_input(duvida_aluno):
+def process_duvida_input(duvida_aluno):
     if not st.session_state.agente_duvidas_obj:
         st.session_state.agente_duvidas_obj = criar_agente_duvidas()
       st.session_state.historico_duvidas += f"Aluno Dúvida: {duvida_aluno}\n"
