@@ -195,7 +195,7 @@ def generate_lesson_and_review():
         entrada_para_buscador = f"TÓPICO: {st.session_state.topico_estudo}\nPERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}"
         pontos_chave_e_fontes = call_agent(st.session_state.agente_buscador_obj,
                                         entrada_para_buscador)
-          entrada_para_redator = f"""
+        entrada_para_redator = f"""
         TÓPICO: {st.session_state.topico_estudo}
         PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
         INFORMAÇÕES DE BASE:
