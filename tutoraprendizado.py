@@ -413,11 +413,11 @@ import getpass
 if "GOOGLE_API_KEY" not in os.environ:
    print("GOOGLE_API_KEY não encontrada nas variáveis de ambiente.")
    print("Por favor, cole sua chave API do Google (Gemini) abaixo e pressione Enter:")
-    api_key_input = getpass.getpass("GOOGLE_API_KEY: ")
-    if api_key_input:
+   api_key_input = getpass.getpass("GOOGLE_API_KEY: ")
+   if api_key_input:
        os.environ["GOOGLE_API_KEY"] = api_key_input
        print("GOOGLE_API_KEY definida com sucesso para esta sessão!")
    else:
        print("Atenção: A chave API não foi fornecida.")
-else:
+    else:
    print("GOOGLE_API_KEY já está definida nas variáveis de ambiente. Tudo pronto!")
