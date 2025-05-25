@@ -191,7 +191,7 @@ def generate_lesson_and_review():
     st.session_state.agente_buscador_obj = criar_agente_buscador()
     st.session_state.agente_redator_obj = criar_agente_redator()
     st.session_state.agente_review_obj = criar_agente_review()
-      with st.spinner("Buscando informações e redigindo a aula..."):
+    with st.spinner("Buscando informações e redigindo a aula..."):
         entrada_para_buscador = f"TÓPICO: {st.session_state.topico_estudo}\nPERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}"
         pontos_chave_e_fontes = call_agent(st.session_state.agente_buscador_obj,
                                         entrada_para_buscador)
