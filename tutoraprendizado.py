@@ -419,5 +419,5 @@ if "GOOGLE_API_KEY" not in os.environ:
        print("GOOGLE_API_KEY definida com sucesso para esta sessão!")
    else:
        print("Atenção: A chave API não foi fornecida.")
-    else:
+   else:
    print("GOOGLE_API_KEY já está definida nas variáveis de ambiente. Tudo pronto!")
