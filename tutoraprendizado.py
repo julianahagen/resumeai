@@ -408,16 +408,25 @@ if st.session_state.current_stage == "end":
     if st.button("Recomeçar", key="btn_recomecar_final"):
         st.session_state.clear()
         st.rerun()
+import streamlit as st
 import os
-import getpass
-if "GOOGLE_API_KEY" not in os.environ:
-   print("GOOGLE_API_KEY não encontrada nas variáveis de ambiente.")
-   print("Por favor, cole sua chave API do Google (Gemini) abaixo e pressione Enter:")
-   api_key_input = getpass.getpass("GOOGLE_API_KEY: ")
-   if api_key_input:
-       os.environ["GOOGLE_API_KEY"] = api_key_input
-       print("GOOGLE_API_KEY definida com sucesso para esta sessão!")
-   else:
-       print("Atenção: A chave API não foi fornecida.")
+# ... outros imports ...
+from google.generativeai import configure as configure_gemini
+import google.generativeai as gemini
+import google.generativeai.types as genai_types # Certifique-se de que esta linha está presente e correta
+
+# --- CONFIGURAÇÃO DA API KEY ---
+api_key = None
+if os.getenv("GOOGLE_API_KEY"): # Para o Colab ou ambientes com variáveis de ambiente
+    api_key = os.getenv("GOOGLE_API_KEY")
+elif "GOOGLE_API_KEY" in st.secrets: # PARA O STREAMLIT CLOUD: busca a chave de st.secrets
+    api_key = st.secrets["GOOGLE_API_KEY"]
+
+if not api_key:
+    # Se a API Key não for encontrada de nenhuma das formas (ambiente ou secrets)
+    st.error("API Key do Google não encontrada. Por favor, certifique-se de que a `GOOGLE_API_KEY` está definida como um segredo no Streamlit Cloud.")
+    st.stop() # Interrompe a execução do app se a chave não estiver configurada
 else:
-   print("GOOGLE_API_KEY já está definida nas variáveis de ambiente. Tudo pronto!")
+    configure_gemini(api_key=api_key) # Só configura se a chave for encontrada
+
+MODEL_ID = "gemini-2.0-flash"
