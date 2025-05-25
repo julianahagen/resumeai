@@ -409,7 +409,7 @@ if st.session_state.current_stage == "end":
         st.session_state.clear()
         st.rerun()
 import os
-i,port getpass
+import getpass
 if "GOOGLE_API_KEY" not in os.environ:
    print("GOOGLE_API_KEY não encontrada nas variáveis de ambiente.")
    print("Por favor, cole sua chave API do Google (Gemini) abaixo e pressione Enter:")
