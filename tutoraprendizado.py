@@ -237,7 +237,7 @@ def process_duvida_input(duvida_aluno):
     with st.spinner("Buscando a resposta para sua dúvida..."):
         resposta_do_agente_duvidas = call_agent(st.session_state.agente_duvidas_obj,
                                                 entrada_para_duvidas)
-      st.session_state.historico_duvidas += f"Professor Dúvidas: {resposta_do_agente_duvidas}\n---\n"
+    st.session_state.historico_duvidas += f"Professor Dúvidas: {resposta_do_agente_duvidas}\n---\n"
     st.rerun() # Para atualizar o histórico de dúvidas na tela
  
 def prepare_and_offer_download():
