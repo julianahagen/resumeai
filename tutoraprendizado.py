@@ -8,432 +8,427 @@ Original file is located at
 """
 
 # Commented out IPython magic to ensure Python compatibility.
-# %%writefile app.py
-# import streamlit as st
-# import os
-# from datetime import date
-# from google.generativeai import configure as configure_gemini
-# import google.generativeai as gemini
-# import google.generativeai.types as genai_types # IMPORTANTE: Adicione esta linha
-# 
+ %%writefile app.py
+ import streamlit as st
+ import os
+ from datetime import date
+ from google.generativeai import configure as configure_gemini
+ import google.generativeai as gemini
+ import google.generativeai.types as genai_types # IMPORTANTE: Adicione esta linha
+ 
 # # IMPORTANTE: A função Google Search precisa estar definida ou importável aqui.
 # # Esta é uma implementação dummy para que o código funcione.
 # # Sua função real precisa fazer a busca na internet.
-# def google_search(query):
-#     st.warning(f"Usando função 'google_search' dummy para: '{query}'. Por favor, substitua pela sua implementação real se for usar busca na internet.")
-#     return f"Informações encontradas sobre '{query}'."
-# 
-# 
+ def google_search(query):
+     st.warning(f"Usando função 'google_search' dummy para: '{query}'. Por favor, substitua pela sua implementação real se for usar busca na internet.")
+     return f"Informações encontradas sobre '{query}'."
+
+ 
 # # --- CONFIGURAÇÃO DA API KEY ---
-# api_key = None
-# if os.getenv("GOOGLE_API_KEY"):
-#     api_key = os.getenv("GOOGLE_API_KEY")
-# elif "GOOGLE_API_KEY" in st.secrets:
-#     api_key = st.secrets["GOOGLE_API_KEY"]
-# 
-# if not api_key:
-#     st.error("API Key do Google não encontrada. Por favor, certifique-se de que a `GOOGLE_API_KEY` está definida como um segredo no Colab (ícone de chave 🔑 na barra lateral) ou use a célula de verificação de API Key.")
-#     st.stop()
-# else:
-#     configure_gemini(api_key=api_key)
-# 
-# MODEL_ID = "gemini-2.0-flash" # Use o mesmo modelo que você estava usando
-# 
-# # --- FUNÇÕES AUXILIARES E DEFINIÇÕES DE AGENTES ADAPTADAS ---
-# 
-# # FUNÇÃO CALL_AGENT MELHORADA PARA LIDAR COM FERRAMENTAS
-# def call_agent(model_obj, prompt_input):
-#     """
-#     Chama o modelo GenerativeModel com o prompt, tratando chamadas de ferramenta
-#     em um ciclo de conversação para garantir uma resposta de texto final.
-#     """
-#     try:
-#         chat = model_obj.start_chat(history=[])
-#         response = chat.send_message(prompt_input)
-# 
-#         # Loop para lidar com múltiplas voltas (chamadas de ferramentas e respostas)
-#         while True:
-#             # Verifica se a resposta final é texto
-#             if response.text:
-#                 return response.text
-# 
-#             # Se a resposta contiver chamadas de função
-#             tool_calls = [part.function_call for part in response.parts if part.function_call]
-# 
-#             if tool_calls:
-#                 tool_responses_for_model = []
-#                 for fc in tool_calls:
-#                     function_name = fc.name
-#                     function_args = {k: v for k, v in fc.args.items()} # Converter args para dict
-# 
-#                     if function_name == "google_search":
-#                         st.info(f"Modelo solicitou google_search com: {function_args.get('query', '')}")
-#                         search_result = google_search(**function_args)
-#                         tool_responses_for_model.append(
-#                             genai_types.Part(
-#                                 function_response=genai_types.FunctionResponse(
-#                                     name=function_name,
-#                                     response={"result": search_result} # O conteúdo da resposta da ferramenta deve ser um dict
-#                                 )
-#                             )
-#                         )
-#                     else:
-#                         st.warning(f"Função desconhecida solicitada pelo modelo: {function_name}")
-#                         tool_responses_for_model.append(
-#                             genai_types.Part(
-#                                 function_response=genai_types.FunctionResponse(
-#                                     name=function_name,
-#                                     response={"error": f"Função desconhecida: {function_name}"}
-#                                 )
-#                             )
-#                         )
-#                 # Envia o resultado da ferramenta de volta para o modelo
-#                 response = chat.send_message(tool_responses_for_model)
-#             else:
-#                 # Se não houver texto nem chamadas de função, algo está errado
-#                 st.error(f"Resposta do modelo inesperada: não contém texto nem chamadas de função válidas. Conteúdo: {response}")
-#                 return "Erro: Resposta inesperada do modelo."
-# 
-#     except Exception as e:
-#         # Captura erros gerais de API, rede, etc.
-#         st.error(f"Erro ao chamar modelo: {e}. Por favor, verifique sua conexão com a internet e a validade da sua API Key.")
-#         return f"Erro: {e}"
-# 
-# 
-# def to_markdown(text):
-#     return text # Streamlit já renderiza markdown diretamente
-# 
-# # --- Adaptação da Criação dos Agentes para GenerativeModel ---
-# def criar_agente_recepcionista():
-#     return gemini.GenerativeModel(
-#         model_name=MODEL_ID,
-#         generation_config={"temperature": 0.5},
-#         system_instruction="Você é o agente recepcionista. Sua tarefa é entender o perfil do aluno (idade/nível, objetivo, estilo de aprendizado) através das respostas dadas e sumarizá-lo em 2-3 frases de forma concisa para que um professor de IA possa adaptar o ensino."
-#     )
-# 
-# def criar_agente_buscador():
-#     return gemini.GenerativeModel(
-#         model_name=MODEL_ID,
-#         tools=[google_search], # Adiciona a ferramenta Google Search aqui
-#         generation_config={"temperature": 0.5},
-#         system_instruction="Você é um agente buscador. Sua tarefa é usar a função `google_search` para encontrar informações relevantes sobre o tópico de estudo e os pontos chave de acordo com o perfil do aluno. Retorne os pontos chave e as URLs das fontes."
-#     )
-# 
-# def criar_agente_redator():
-#     return gemini.GenerativeModel(
-#         model_name=MODEL_ID,
-#         generation_config={"temperature": 0.7},
-#         system_instruction="Você é um agente redator de aulas. Sua tarefa é redigir uma aula completa, didática e adaptada ao perfil do aluno, utilizando as informações de base fornecidas."
-#     )
-# 
-# def criar_agente_review():
-#     return gemini.GenerativeModel(
-#         model_name=MODEL_ID,
-#         generation_config={"temperature": 0.5},
-#         system_instruction="Você é um agente de revisão. Sua tarefa é fazer um resumo conciso dos pontos-chave da aula e indicar materiais/fontes adicionais para revisão."
-#     )
-# 
-# def criar_agente_duvidas():
-#     return gemini.GenerativeModel(
-#         model_name=MODEL_ID,
-#         tools=[google_search], # Adiciona a ferramenta Google Search aqui
-#         generation_config={"temperature": 0.5},
-#         system_instruction="Você é um agente tira-dúvidas. Sua tarefa é responder às perguntas do aluno usando as informações da aula, o perfil do aluno e, se necessário, buscando informações adicionais com `Google Search`. Seja claro e objetivo."
-#     )
-# 
-# def criar_agente_salvador_local():
-#     return gemini.GenerativeModel(
-#         model_name=MODEL_ID,
-#         generation_config={"temperature": 0.5},
-#         system_instruction="Você é um agente finalizador. Sua tarefa é perguntar ao aluno se ele deseja salvar o conteúdo completo desta sessão em um arquivo local, de forma amigável."
-#     )
-# 
+ api_key = None
+ if os.getenv("GOOGLE_API_KEY"):
+     api_key = os.getenv("GOOGLE_API_KEY")
+ elif "GOOGLE_API_KEY" in st.secrets:
+     api_key = st.secrets["GOOGLE_API_KEY"]
+ 
+ if not api_key:
+     st.error("API Key do Google não encontrada. Por favor, certifique-se de que a `GOOGLE_API_KEY` está definida como um segredo no Colab (ícone de chave 🔑 na barra lateral) ou use a célula de verificação de API Key.")
+     st.stop()
+ else:
+     configure_gemini(api_key=api_key)
+ 
+ MODEL_ID = "gemini-2.0-flash" # Use o mesmo modelo que você estava usando
+ 
+ # --- FUNÇÕES AUXILIARES E DEFINIÇÕES DE AGENTES ADAPTADAS ---
+ 
+ # FUNÇÃO CALL_AGENT MELHORADA PARA LIDAR COM FERRAMENTAS
+ def call_agent(model_obj, prompt_input):
+     """
+     Chama o modelo GenerativeModel com o prompt, tratando chamadas de ferramenta
+     em um ciclo de conversação para garantir uma resposta de texto final.
+     """
+     try:
+         chat = model_obj.start_chat(history=[])
+         response = chat.send_message(prompt_input)
+ 
+         # Loop para lidar com múltiplas voltas (chamadas de ferramentas e respostas)
+         while True:
+             # Verifica se a resposta final é texto
+             if response.text:
+                 return response.text
+ 
+             # Se a resposta contiver chamadas de função
+             tool_calls = [part.function_call for part in response.parts if part.function_call]
+ 
+             if tool_calls:
+                 tool_responses_for_model = []
+                 for fc in tool_calls:
+                     function_name = fc.name
+                     function_args = {k: v for k, v in fc.args.items()} # Converter args para dict
+ 
+                     if function_name == "google_search":
+                         st.info(f"Modelo solicitou google_search com: {function_args.get('query', '')}")
+                         search_result = google_search(**function_args)
+                         tool_responses_for_model.append(
+                             genai_types.Part(
+                                 function_response=genai_types.FunctionResponse(
+                                     name=function_name,
+                                     response={"result": search_result} # O conteúdo da resposta da ferramenta deve ser um dict
+                                 )
+                             )
+                         )
+                     else:
+                         st.warning(f"Função desconhecida solicitada pelo modelo: {function_name}")
+                         tool_responses_for_model.append(
+                             genai_types.Part(
+                                 function_response=genai_types.FunctionResponse(
+                                     name=function_name,
+                                     response={"error": f"Função desconhecida: {function_name}"}
+                                 )
+                             )
+                         )
+                 # Envia o resultado da ferramenta de volta para o modelo
+                 response = chat.send_message(tool_responses_for_model)
+             else:
+                 # Se não houver texto nem chamadas de função, algo está errado
+                 st.error(f"Resposta do modelo inesperada: não contém texto nem chamadas de função válidas. Conteúdo: {response}")
+                 return "Erro: Resposta inesperada do modelo."
+ 
+     except Exception as e:
+         # Captura erros gerais de API, rede, etc.
+         st.error(f"Erro ao chamar modelo: {e}. Por favor, verifique sua conexão com a internet e a validade da sua API Key.")
+         return f"Erro: {e}"
+ 
+ 
+ def to_markdown(text):
+     return text # Streamlit já renderiza markdown diretamente
+ 
+ # --- Adaptação da Criação dos Agentes para GenerativeModel ---
+def criar_agente_recepcionista():
+     return gemini.GenerativeModel(
+         model_name=MODEL_ID,
+         generation_config={"temperature": 0.5},
+         system_instruction="Você é o agente recepcionista. Sua tarefa é entender o perfil do aluno (idade/nível, objetivo, estilo de aprendizado) através das respostas dadas e sumarizá-lo em 2-3 frases de forma concisa para que um professor de IA possa adaptar o ensino."
+     )
+ 
+ def criar_agente_buscador():
+     return gemini.GenerativeModel(
+         model_name=MODEL_ID,
+        tools=[google_search], # Adiciona a ferramenta Google Search aqui
+         generation_config={"temperature": 0.5},
+         system_instruction="Você é um agente buscador. Sua tarefa é usar a função `google_search` para encontrar informações relevantes sobre o tópico de estudo e os pontos chave de acordo com o perfil do aluno. Retorne os pontos chave e as URLs das fontes."
+     )
+ 
+ def criar_agente_redator():
+     return gemini.GenerativeModel(
+         model_name=MODEL_ID,
+         generation_config={"temperature": 0.7},
+         system_instruction="Você é um agente redator de aulas. Sua tarefa é redigir uma aula completa, didática e adaptada ao perfil do aluno, utilizando as informações de base fornecidas."
+     )
+ 
+ def criar_agente_review():
+     return gemini.GenerativeModel(
+         model_name=MODEL_ID,
+         generation_config={"temperature": 0.5},
+         system_instruction="Você é um agente de revisão. Sua tarefa é fazer um resumo conciso dos pontos-chave da aula e indicar materiais/fontes adicionais para revisão."
+     )
+ 
+ def criar_agente_duvidas():
+     return gemini.GenerativeModel(
+         model_name=MODEL_ID,
+         tools=[google_search], # Adiciona a ferramenta Google Search aqui
+         generation_config={"temperature": 0.5},
+         system_instruction="Você é um agente tira-dúvidas. Sua tarefa é responder às perguntas do aluno usando as informações da aula, o perfil do aluno e, se necessário, buscando informações adicionais com `Google Search`. Seja claro e objetivo."
+     )
+
+ def criar_agente_salvador_local():
+     return gemini.GenerativeModel(
+         model_name=MODEL_ID,
+         generation_config={"temperature": 0.5},
+         system_instruction="Você é um agente finalizador. Sua tarefa é perguntar ao aluno se ele deseja salvar o conteúdo completo desta sessão em um arquivo local, de forma amigável."
+     )
+ 
 # # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
-# if 'current_stage' not in st.session_state:
-#     st.session_state.current_stage = "start"
-#     st.session_state.perfil_raw_answers = {}
-#     st.session_state.perfil_do_aluno_sumarizado = ""
-#     st.session_state.topico_estudo = ""
-#     st.session_state.texto_final_aula = ""
-#     st.session_state.material_revisao = ""
-#     st.session_state.historico_duvidas = ""
-#     st.session_state.agente_recepcionista_obj = None
-#     st.session_state.agente_buscador_obj = None
-#     st.session_state.agente_redator_obj = None
-#     st.session_state.agente_review_obj = None
-#     st.session_state.agente_duvidas_obj = None
-#     st.session_state.agente_salvador_local_obj = None
-#     st.session_state.perguntas_perfil = [
-#         "Qual a sua idade ou nível de ensino (ex: '10 anos', 'ensino médio', 'graduação', 'especialista')?",
-#         "Qual o seu objetivo principal ao aprender este tópico (ex: 'entender o básico', 'aprofundar para um projeto', 'revisar para prova')?",
-#         "Qual a sua forma preferida de aprender (ex: 'exemplos práticos', 'teoria aprofundada', 'resumos e mapas mentais')?"
-#     ]
-#     st.session_state.perfil_step = 0
-# 
-# # --- FUNÇÕES PARA CADA ETAPA DO FLUXO ---
-# def start_session():
-#     st.session_state.agente_recepcionista_obj = criar_agente_recepcionista()
-#     st.session_state.current_stage = "perfil"
-#     # Não precisamos de st.rerun() aqui, o script vai re-executar e exibir a próxima seção
-# 
-# def summarize_perfil_and_move_to_topic():
-#     respostas_concatenadas = "\n".join([f"{q}: {st.session_state.perfil_raw_answers[q]}" for q in st.session_state.perguntas_perfil])
-#     entrada_para_recepcionista = f"""
-#     Respostas do aluno sobre o perfil:
-#     {respostas_concatenadas}
-#     ---
-#     Por favor, sumarize este perfil em 2-3 frases, focando no nível de conhecimento, objetivo e estilo de aprendizado do aluno, para que um professor de IA possa adaptar o ensino.
-#     """
-#     with st.spinner("Analisando seu perfil..."):
-#         st.session_state.perfil_do_aluno_sumarizado = call_agent(st.session_state.agente_recepcionista_obj,
-#                                                                 entrada_para_recepcionista)
-#     st.success("Perfil analisado!")
-#     st.session_state.current_stage = "topico" # Marca que o perfil foi processado e o tópico pode ser pedido
-#     st.rerun() # Dispara a re-execução para exibir a próxima seção
-# 
-# def generate_lesson_and_review():
-#     st.session_state.agente_buscador_obj = criar_agente_buscador()
-#     st.session_state.agente_redator_obj = criar_agente_redator()
-#     st.session_state.agente_review_obj = criar_agente_review()
-# 
-#     with st.spinner("Buscando informações e redigindo a aula..."):
-#         entrada_para_buscador = f"TÓPICO: {st.session_state.topico_estudo}\nPERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}"
-#         pontos_chave_e_fontes = call_agent(st.session_state.agente_buscador_obj,
-#                                         entrada_para_buscador)
-# 
-#         entrada_para_redator = f"""
-#         TÓPICO: {st.session_state.topico_estudo}
-#         PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
-#         INFORMAÇÕES DE BASE:
-#         {pontos_chave_e_fontes}
-#         ---
-#         Por favor, redija uma aula completa e didática.
-#         """
-#         st.session_state.texto_final_aula = call_agent(st.session_state.agente_redator_obj,
-#                                                     entrada_para_redator)
-#     st.success("Aula gerada!")
-# 
-#     with st.spinner("Gerando material de revisão..."):
-#         entrada_para_review = f"""
-#         TÓPICO: {st.session_state.topico_estudo}
-#         PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
-#         CONTEÚDO DA AULA:
-#         {st.session_state.texto_final_aula}
-#         ---
-#         Por favor, faça um resumo e indique fontes para revisão.
-#         """
-#         st.session_state.material_revisao = call_agent(st.session_state.agente_review_obj,
-#                                                         entrada_para_review)
-#     st.success("Material de revisão pronto!")
-#     st.session_state.current_stage = "aula_gerada" # Nova etapa para indicar que aula e resumo estão prontos
-#     st.rerun() # Dispara a re-execução para exibir a aula e a seção de dúvidas
-# 
-# def process_duvida_input(duvida_aluno):
-#     if not st.session_state.agente_duvidas_obj:
-#         st.session_state.agente_duvidas_obj = criar_agente_duvidas()
-# 
-#     st.session_state.historico_duvidas += f"Aluno Dúvida: {duvida_aluno}\n"
-# 
-#     entrada_para_duvidas = f"""
-# DÚVIDA DO ALUNO: {duvida_aluno}
-# TÓPICO GERAL: {st.session_state.topico_estudo}
-# PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
-# CONTEÚDO ANTERIOR (para contexto):
-# {st.session_state.texto_final_aula}
-# {st.session_state.material_revisao}
+ if 'current_stage' not in st.session_state:
+     st.session_state.current_stage = "start"
+     st.session_state.perfil_raw_answers = {}
+     st.session_state.perfil_do_aluno_sumarizado = ""
+     st.session_state.topico_estudo = ""
+     st.session_state.texto_final_aula = ""
+     st.session_state.material_revisao = ""
+     st.session_state.historico_duvidas = ""
+     st.session_state.agente_recepcionista_obj = None
+     st.session_state.agente_buscador_obj = None
+     st.session_state.agente_redator_obj = None
+     st.session_state.agente_review_obj = None
+     st.session_state.agente_duvidas_obj = None
+     st.session_state.agente_salvador_local_obj = None
+     st.session_state.perguntas_perfil = [
+         "Qual a sua idade ou nível de ensino (ex: '10 anos', 'ensino médio', 'graduação', 'especialista')?",
+         "Qual o seu objetivo principal ao aprender este tópico (ex: 'entender o básico', 'aprofundar para um projeto', 'revisar para prova')?",
+         "Qual a sua forma preferida de aprender (ex: 'exemplos práticos', 'teoria aprofundada', 'resumos e mapas mentais')?"
+     ]
+     st.session_state.perfil_step = 0
+ 
+ # --- FUNÇÕES PARA CADA ETAPA DO FLUXO ---
+def start_session():
+    st.session_state.agente_recepcionista_obj = criar_agente_recepcionista()
+     st.session_state.current_stage = "perfil"
+     # Não precisamos de st.rerun() aqui, o script vai re-executar e exibir a próxima seção
+ 
+def summarize_perfil_and_move_to_topic():
+     respostas_concatenadas = "\n".join([f"{q}: {st.session_state.perfil_raw_answers[q]}" for q in st.session_state.perguntas_perfil])
+     entrada_para_recepcionista = f"""
+     Respostas do aluno sobre o perfil:
+     {respostas_concatenadas}
+     ---
+     Por favor, sumarize este perfil em 2-3 frases, focando no nível de conhecimento, objetivo e estilo de aprendizado do aluno, para que um professor de IA possa adaptar o ensino.
+     """
+     with st.spinner("Analisando seu perfil..."):
+         st.session_state.perfil_do_aluno_sumarizado = call_agent(st.session_state.agente_recepcionista_obj,
+                                                                 entrada_para_recepcionista)
+     st.success("Perfil analisado!")
+     st.session_state.current_stage = "topico" # Marca que o perfil foi processado e o tópico pode ser pedido
+     st.rerun() # Dispara a re-execução para exibir a próxima seção
+ 
+ def generate_lesson_and_review():
+     st.session_state.agente_buscador_obj = criar_agente_buscador()
+     st.session_state.agente_redator_obj = criar_agente_redator()
+     st.session_state.agente_review_obj = criar_agente_review()
+ 
+     with st.spinner("Buscando informações e redigindo a aula..."):
+         entrada_para_buscador = f"TÓPICO: {st.session_state.topico_estudo}\nPERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}"
+         pontos_chave_e_fontes = call_agent(st.session_state.agente_buscador_obj,
+                                         entrada_para_buscador)
+ 
+         entrada_para_redator = f"""
+         TÓPICO: {st.session_state.topico_estudo}
+         PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
+         INFORMAÇÕES DE BASE:
+         {pontos_chave_e_fontes}
+         ---
+         Por favor, redija uma aula completa e didática.
+         """
+         st.session_state.texto_final_aula = call_agent(st.session_state.agente_redator_obj,
+                                                     entrada_para_redator)
+     st.success("Aula gerada!")
+ 
+     with st.spinner("Gerando material de revisão..."):
+         entrada_para_review = f"""
+         TÓPICO: {st.session_state.topico_estudo}
+         PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
+         CONTEÚDO DA AULA:
+         {st.session_state.texto_final_aula}
+         ---
+         Por favor, faça um resumo e indique fontes para revisão.
+         """
+         st.session_state.material_revisao = call_agent(st.session_state.agente_review_obj,
+                                                         entrada_para_review)
+     st.success("Material de revisão pronto!")
+     st.session_state.current_stage = "aula_gerada" # Nova etapa para indicar que aula e resumo estão prontos
+     st.rerun() # Dispara a re-execução para exibir a aula e a seção de dúvidas
+ 
+ def process_duvida_input(duvida_aluno):
+     if not st.session_state.agente_duvidas_obj:
+         st.session_state.agente_duvidas_obj = criar_agente_duvidas()
+ 
+     st.session_state.historico_duvidas += f"Aluno Dúvida: {duvida_aluno}\n"
+ 
+     entrada_para_duvidas = f"""
+ DÚVIDA DO ALUNO: {duvida_aluno}
+ TÓPICO GERAL: {st.session_state.topico_estudo}
+ PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
+ CONTEÚDO ANTERIOR (para contexto):
+ {st.session_state.texto_final_aula}
+ {st.session_state.material_revisao}
+ ---
+ Por favor, responda a dúvida do aluno utilizando busca na internet e adaptando ao perfil.
+ """
+     with st.spinner("Buscando a resposta para sua dúvida..."):
+         resposta_do_agente_duvidas = call_agent(st.session_state.agente_duvidas_obj,
+                                                 entrada_para_duvidas)
+ 
+     st.session_state.historico_duvidas += f"Professor Dúvidas: {resposta_do_agente_duvidas}\n---\n"
+     st.rerun() # Para atualizar o histórico de dúvidas na tela
+ 
+ def prepare_and_offer_download():
+     st.session_state.agente_salvador_local_obj = criar_agente_salvador_local()
+ 
+     conteudo_completo_sessao = f"""
+ # Relatório da Sessão de Estudo: {st.session_state.topico_estudo}
+ 
+ **Data:** {date.today().strftime('%Y-%m-%d')}
+ **Perfil do Aluno:** {st.session_state.perfil_do_aluno_sumarizado}
+ 
+ ---
+ 
+ ## Conteúdo da Aula
+ 
+ {st.session_state.texto_final_aula}
+ 
+ ---
+ 
+ ## Resumo e Materiais Adicionais
+ 
+ {st.session_state.material_revisao}
+ 
+ ---
+ 
+ ## Histórico da Sessão de Dúvidas
+ 
+ {st.session_state.historico_duvidas.strip() if st.session_state.historico_duvidas.strip() else "Nenhum histórico de dúvidas registrado."}
+ 
 # ---
-# Por favor, responda a dúvida do aluno utilizando busca na internet e adaptando ao perfil.
 # """
-#     with st.spinner("Buscando a resposta para sua dúvida..."):
-#         resposta_do_agente_duvidas = call_agent(st.session_state.agente_duvidas_obj,
-#                                                 entrada_para_duvidas)
-# 
-#     st.session_state.historico_duvidas += f"Professor Dúvidas: {resposta_do_agente_duvidas}\n---\n"
-#     st.rerun() # Para atualizar o histórico de dúvidas na tela
-# 
-# def prepare_and_offer_download():
-#     st.session_state.agente_salvador_local_obj = criar_agente_salvador_local()
-# 
-#     conteudo_completo_sessao = f"""
-# # Relatório da Sessão de Estudo: {st.session_state.topico_estudo}
-# 
-# **Data:** {date.today().strftime('%Y-%m-%d')}
-# **Perfil do Aluno:** {st.session_state.perfil_do_aluno_sumarizado}
-# 
-# ---
-# 
-# ## Conteúdo da Aula
-# 
-# {st.session_state.texto_final_aula}
-# 
-# ---
-# 
-# ## Resumo e Materiais Adicionais
-# 
-# {st.session_state.material_revisao}
-# 
-# ---
-# 
-# ## Histórico da Sessão de Dúvidas
-# 
-# {st.session_state.historico_duvidas.strip() if st.session_state.historico_duvidas.strip() else "Nenhum histórico de dúvidas registrado."}
-# 
-# ---
-# """
-#     st.markdown("---")
-#     st.markdown("## 💾 Finalizando a Sessão de Estudo")
-#     st.markdown("Chamando o Agente Salvador para perguntar sobre salvar...")
-# 
-#     entrada_para_salvador_local = f"""
-# CONTEÚDO COMPLETO DA SESSÃO (amostra):
-# {conteudo_completo_sessao[:1500]}
-# ---
-# Por favor, faça a pergunta sobre salvar o conteúdo completo desta sessão em um arquivo local, de forma amigável.
-# """
-#     pergunta_do_salvador = call_agent(st.session_state.agente_salvador_local_obj,
-#                                     entrada_para_salvador_local)
-#     st.markdown(pergunta_do_salvador)
-# 
-#     st.download_button(
-#         label="Baixar Conteúdo da Sessão",
-#         data=conteudo_completo_sessao.encode("utf-8"),
-#         file_name=f"Sessao_Estudo_{st.session_state.topico_estudo.replace(' ', '_').replace('/', '-')}_{date.today().strftime('%Y%m%d')}.md",
-#         mime="text/markdown"
-#     )
-#     st.session_state.current_stage = "end"
-#     # Não precisa de rerun aqui, pois é a tela final e o botão de recomeçar já faz isso
-# 
-# # --- INTERFACE DO USUÁRIO BASEADA NO ESTADO ---
-# st.set_page_config(page_title="Sistema de Aprendizado com Agentes IA", layout="wide")
-# st.title("📚 Sistema de Aprendizado Interativo com Agentes IA")
-# st.write("Um tutor virtual personalizado para te guiar no estudo de qualquer tópico!")
-# 
-# # Seção 1: Início
-# if st.session_state.current_stage == "start":
-#     st.write("Bem-vindo ao seu tutor de IA personalizado! Vamos começar configurando seu perfil.")
-#     if st.button("Iniciar Sessão de Estudo"):
-#         start_session()
-#         st.rerun()
-# 
-# # Seção 2: Perfil do Aluno
-# if st.session_state.current_stage in ["perfil", "topico", "aula_gerada", "ask_duvidas", "salvar", "end"]:
-#     st.markdown("---")
-#     st.markdown("## 👤 Configurando Seu Perfil de Aprendizado")
-#     # Exibe as perguntas do perfil e as respostas já dadas
-#     for i, pergunta in enumerate(st.session_state.perguntas_perfil):
-#         if pergunta in st.session_state.perfil_raw_answers:
-#             st.markdown(f"**{pergunta}**")
-#             st.write(st.session_state.perfil_raw_answers[pergunta])
-#         elif st.session_state.current_stage == "perfil" and i == st.session_state.perfil_step:
-#             # Exibe a pergunta atual apenas se estiver na etapa de perfil
-#             resposta_perfil = st.text_input(pergunta, key=f"pergunta_perfil_{st.session_state.perfil_step}")
-#             if st.button("Próxima Pergunta", key=f"btn_perfil_{st.session_state.perfil_step}"):
-#                 if resposta_perfil:
-#                     st.session_state.perfil_raw_answers[pergunta] = resposta_perfil
-#                     st.session_state.perfil_step += 1
-#                     st.rerun()
-#                 else:
-#                     st.warning("Por favor, responda à pergunta antes de continuar.")
-#             break # Sai do loop para exibir apenas uma pergunta por vez
-# 
-#     if st.session_state.perfil_step >= len(st.session_state.perguntas_perfil) and not st.session_state.perfil_do_aluno_sumarizado:
-#         # Se todas as perguntas foram respondidas mas o perfil não foi sumarizado
-#         summarize_perfil_and_move_to_topic() # Isso já dispara um rerun
-# 
-#     if st.session_state.perfil_do_aluno_sumarizado:
-#         st.markdown(f"**Seu Perfil Sumarizado:** {st.session_state.perfil_do_aluno_sumarizado}")
-# 
-# # Seção 3: Tópico de Estudo
-# if st.session_state.current_stage in ["topico", "aula_gerada", "ask_duvidas", "salvar", "end"]:
-#     st.markdown("---")
-#     st.markdown("## 📚 Qual Tópico Você Deseja Estudar Hoje?")
-#     if not st.session_state.topico_estudo: # Apenas mostra o input se o tópico ainda não foi definido
-#         st.session_state.topico_estudo = st.text_input("Digite o tópico (ex: 'Introdução à Programação Python', 'História da Revolução Francesa'):", key="topico_input")
-#         if st.button("Gerar Aula e Resumo", key="btn_gerar_aula"):
-#             if st.session_state.topico_estudo:
-#                 generate_lesson_and_review() # Isso já dispara um rerun
-#             else:
-#                 st.warning("Por favor, digite um tópico para estudar.")
-#     else:
-#         st.markdown(f"**Tópico de Estudo:** {st.session_state.topico_estudo}")
-#         # Se o tópico já foi definido e a aula não foi gerada ainda, gera.
-#         if not st.session_state.texto_final_aula:
-#             generate_lesson_and_review() # Isso já dispara um rerun
-# 
-# # Seção 4: Aula e Resumo
-# if st.session_state.current_stage in ["aula_gerada", "ask_duvidas", "salvar", "end"]:
-#     if st.session_state.texto_final_aula: # Garante que o texto existe antes de exibir
-#         st.markdown("---")
-#         st.markdown("## 📖 Sua Aula:")
-#         st.markdown(st.session_state.texto_final_aula)
-# 
-#         st.markdown("---")
-#         st.markdown("## ✨ Resumo e Materiais Adicionais:")
-#         st.markdown(st.session_state.material_revisao)
-# 
-#     # Agora, se o current_stage for "aula_gerada", transicione para "ask_duvidas" para exibir a seção de dúvidas
-#     if st.session_state.current_stage == "aula_gerada":
-#         st.session_state.current_stage = "ask_duvidas"
-#         st.rerun()
-# 
-# 
-# # Seção 5: Dúvidas
-# if st.session_state.current_stage in ["ask_duvidas", "salvar", "end"]:
-#     st.markdown("---")
-#     st.markdown("## 🤔 Hora de Tirar Dúvidas!")
-#     st.write("Estou pronto para responder suas perguntas sobre o tópico. Pergunte o que quiser!")
-#     st.write("Quando terminar, clique em 'Finalizar Sessão de Dúvidas'.")
-# 
-#     if st.session_state.historico_duvidas:
-#         st.markdown("---")
-#         st.markdown("### Histórico de Dúvidas:")
-#         st.markdown(st.session_state.historico_duvidas)
-#         st.markdown("---")
-# 
-#     duvida_input = st.text_input("Sua dúvida:", key="duvida_input_field")
-# 
-#     col1, col2 = st.columns(2)
-#     with col1:
-#         if st.button("Perguntar", key="btn_perguntar_duvida"):
-#             if duvida_input:
-#                 process_duvida_input(duvida_input)
-#                 # Não precisa limpar duvida_input aqui, o rerun já fará isso
-#             else:
-#                 st.warning("Por favor, digite sua dúvida.")
-#     with col2:
-#         if st.button("Finalizar Sessão de Dúvidas", key="btn_finalizar_duvidas"):
-#             st.session_state.current_stage = "salvar"
-#             st.rerun()
-# 
-# # Seção 6: Salvar e Finalizar
-# if st.session_state.current_stage in ["salvar", "end"]:
-#     prepare_and_offer_download() # Esta função já exibe o download button
-# 
-#     if st.button("Iniciar Nova Sessão", key="btn_nova_sessao_fim"):
-#         st.session_state.clear()
-#         st.rerun()
-# 
-# if st.session_state.current_stage == "end":
-#     st.markdown("---")
-#     st.success("🎉 Sessão de Estudo Finalizada! Espero ter ajudado. Você pode baixar o conteúdo gerado acima.")
-#     if st.button("Recomeçar", key="btn_recomecar_final"):
-#         st.session_state.clear()
-#         st.rerun()
-
+     st.markdown("---")
+     st.markdown("## 💾 Finalizando a Sessão de Estudo")
+     st.markdown("Chamando o Agente Salvador para perguntar sobre salvar...")
+ 
+     entrada_para_salvador_local = f"""
+ CONTEÚDO COMPLETO DA SESSÃO (amostra):
+ {conteudo_completo_sessao[:1500]}
+ ---
+ Por favor, faça a pergunta sobre salvar o conteúdo completo desta sessão em um arquivo local, de forma amigável.
+ """
+     pergunta_do_salvador = call_agent(st.session_state.agente_salvador_local_obj,
+                                     entrada_para_salvador_local)
+     st.markdown(pergunta_do_salvador)
+ 
+     st.download_button(
+         label="Baixar Conteúdo da Sessão",
+         data=conteudo_completo_sessao.encode("utf-8"),
+         file_name=f"Sessao_Estudo_{st.session_state.topico_estudo.replace(' ', '_').replace('/', '-')}_{date.today().strftime('%Y%m%d')}.md",
+         mime="text/markdown"
+     )
+     st.session_state.current_stage = "end"
+     # Não precisa de rerun aqui, pois é a tela final e o botão de recomeçar já faz isso
+ 
+ # --- INTERFACE DO USUÁRIO BASEADA NO ESTADO ---
+ st.set_page_config(page_title="Sistema de Aprendizado com Agentes IA", layout="wide")
+ st.title("📚 Sistema de Aprendizado Interativo com Agentes IA")
+ st.write("Um tutor virtual personalizado para te guiar no estudo de qualquer tópico!")
+ 
+ # Seção 1: Início
+ if st.session_state.current_stage == "start":
+     st.write("Bem-vindo ao seu tutor de IA personalizado! Vamos começar configurando seu perfil.")
+     if st.button("Iniciar Sessão de Estudo"):
+         start_session()
+         st.rerun()
+ 
+ # Seção 2: Perfil do Aluno
+ if st.session_state.current_stage in ["perfil", "topico", "aula_gerada", "ask_duvidas", "salvar", "end"]:
+     st.markdown("---")
+     st.markdown("## 👤 Configurando Seu Perfil de Aprendizado")
+     # Exibe as perguntas do perfil e as respostas já dadas
+     for i, pergunta in enumerate(st.session_state.perguntas_perfil):
+         if pergunta in st.session_state.perfil_raw_answers:
+             st.markdown(f"**{pergunta}**")
+             st.write(st.session_state.perfil_raw_answers[pergunta])
+         elif st.session_state.current_stage == "perfil" and i == st.session_state.perfil_step:
+             # Exibe a pergunta atual apenas se estiver na etapa de perfil
+             resposta_perfil = st.text_input(pergunta, key=f"pergunta_perfil_{st.session_state.perfil_step}")
+             if st.button("Próxima Pergunta", key=f"btn_perfil_{st.session_state.perfil_step}"):
+                 if resposta_perfil:
+                     st.session_state.perfil_raw_answers[pergunta] = resposta_perfil
+                     st.session_state.perfil_step += 1
+                     st.rerun()
+                 else:
+                     st.warning("Por favor, responda à pergunta antes de continuar.")
+             break # Sai do loop para exibir apenas uma pergunta por vez
+ 
+     if st.session_state.perfil_step >= len(st.session_state.perguntas_perfil) and not st.session_state.perfil_do_aluno_sumarizado:
+         # Se todas as perguntas foram respondidas mas o perfil não foi sumarizado
+         summarize_perfil_and_move_to_topic() # Isso já dispara um rerun
+ 
+     if st.session_state.perfil_do_aluno_sumarizado:
+         st.markdown(f"**Seu Perfil Sumarizado:** {st.session_state.perfil_do_aluno_sumarizado}")
+ 
+ # Seção 3: Tópico de Estudo
+ if st.session_state.current_stage in ["topico", "aula_gerada", "ask_duvidas", "salvar", "end"]:
+     st.markdown("---")
+     st.markdown("## 📚 Qual Tópico Você Deseja Estudar Hoje?")
+     if not st.session_state.topico_estudo: # Apenas mostra o input se o tópico ainda não foi definido
+         st.session_state.topico_estudo = st.text_input("Digite o tópico (ex: 'Introdução à Programação Python', 'História da Revolução Francesa'):", key="topico_input")
+         if st.button("Gerar Aula e Resumo", key="btn_gerar_aula"):
+             if st.session_state.topico_estudo:
+                 generate_lesson_and_review() # Isso já dispara um rerun
+             else:
+                 st.warning("Por favor, digite um tópico para estudar.")
+     else:
+         st.markdown(f"**Tópico de Estudo:** {st.session_state.topico_estudo}")
+         # Se o tópico já foi definido e a aula não foi gerada ainda, gera.
+         if not st.session_state.texto_final_aula:
+             generate_lesson_and_review() # Isso já dispara um rerun
+ 
+ # Seção 4: Aula e Resumo
+ if st.session_state.current_stage in ["aula_gerada", "ask_duvidas", "salvar", "end"]:
+     if st.session_state.texto_final_aula: # Garante que o texto existe antes de exibir
+         st.markdown("---")
+         st.markdown("## 📖 Sua Aula:")
+         st.markdown(st.session_state.texto_final_aula)
+ 
+         st.markdown("---")
+         st.markdown("## ✨ Resumo e Materiais Adicionais:")
+         st.markdown(st.session_state.material_revisao)
+ 
+     # Agora, se o current_stage for "aula_gerada", transicione para "ask_duvidas" para exibir a seção de dúvidas
+     if st.session_state.current_stage == "aula_gerada":
+         st.session_state.current_stage = "ask_duvidas"
+         st.rerun()
+ 
+ 
+ # Seção 5: Dúvidas
+ if st.session_state.current_stage in ["ask_duvidas", "salvar", "end"]:
+     st.markdown("---")
+     st.markdown("## 🤔 Hora de Tirar Dúvidas!")
+     st.write("Estou pronto para responder suas perguntas sobre o tópico. Pergunte o que quiser!")
+     st.write("Quando terminar, clique em 'Finalizar Sessão de Dúvidas'.")
+ 
+     if st.session_state.historico_duvidas:
+         st.markdown("---")
+         st.markdown("### Histórico de Dúvidas:")
+         st.markdown(st.session_state.historico_duvidas)
+         st.markdown("---")
+ 
+     duvida_input = st.text_input("Sua dúvida:", key="duvida_input_field")
+ 
+     col1, col2 = st.columns(2)
+     with col1:
+         if st.button("Perguntar", key="btn_perguntar_duvida"):
+             if duvida_input:
+                 process_duvida_input(duvida_input)
+                 # Não precisa limpar duvida_input aqui, o rerun já fará isso
+             else:
+                 st.warning("Por favor, digite sua dúvida.")
+     with col2:
+         if st.button("Finalizar Sessão de Dúvidas", key="btn_finalizar_duvidas"):
+             st.session_state.current_stage = "salvar"
+             st.rerun()
+ 
+ # Seção 6: Salvar e Finalizar
+ if st.session_state.current_stage in ["salvar", "end"]:
+     prepare_and_offer_download() # Esta função já exibe o download button
+ 
+     if st.button("Iniciar Nova Sessão", key="btn_nova_sessao_fim"):
+         st.session_state.clear()
+         st.rerun()
+ 
+ if st.session_state.current_stage == "end":
+     st.markdown("---")
+     st.success("🎉 Sessão de Estudo Finalizada! Espero ter ajudado. Você pode baixar o conteúdo gerado acima.")
+     if st.button("Recomeçar", key="btn_recomecar_final"):
+         st.session_state.clear()
+         st.rerun()
 import os
-import getpass
-
+mport getpass
 if "GOOGLE_API_KEY" not in os.environ:
-    print("GOOGLE_API_KEY não encontrada nas variáveis de ambiente.")
-    print("Por favor, cole sua chave API do Google (Gemini) abaixo e pressione Enter:")
-
+   print("GOOGLE_API_KEY não encontrada nas variáveis de ambiente.")
+   print("Por favor, cole sua chave API do Google (Gemini) abaixo e pressione Enter:")
     api_key_input = getpass.getpass("GOOGLE_API_KEY: ")
-
     if api_key_input:
-        os.environ["GOOGLE_API_KEY"] = api_key_input
-        print("GOOGLE_API_KEY definida com sucesso para esta sessão!")
-    else:
-        print("Atenção: A chave API não foi fornecida.")
-else:
-    print("GOOGLE_API_KEY já está definida nas variáveis de ambiente. Tudo pronto!")
-
+       os.environ["GOOGLE_API_KEY"] = api_key_input
+       print("GOOGLE_API_KEY definida com sucesso para esta sessão!")
+   else:
+       print("Atenção: A chave API não foi fornecida.")
+lse:
+   print("GOOGLE_API_KEY já está definida nas variáveis de ambiente. Tudo pronto!")
