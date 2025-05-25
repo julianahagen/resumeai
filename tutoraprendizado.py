@@ -437,30 +437,3 @@ if "GOOGLE_API_KEY" not in os.environ:
 else:
     print("GOOGLE_API_KEY já está definida nas variáveis de ambiente. Tudo pronto!")
 
-!pip install streamlit pyngrok google-generativeai --upgrade google-cloud-aiplatform -q
-
-!ngrok config add-authtoken 2xTfLGrUt4JqjqDyUxq97Njggyv_3v6XjynVFH1dcVrJ2Uwa1
-
-from pyngrok import ngrok
-import subprocess
-import time
-
-print("Iniciando Streamlit em segundo plano...")
-process = subprocess.Popen([
-    "streamlit", "run", "app.py",
-    "--server.port", "8501",
-    "--server.enableCORS", "false",
-    "--server.enableXsrfProtection", "false"
-], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-time.sleep(5)
-
-public_url = ngrok.connect(8501)
-print(f"Seu aplicativo Streamlit está acessível em: {public_url}")
-
-try:
-    while True:
-        time.sleep(60)
-except KeyboardInterrupt:
-    print("Encerrando o túnel ngrok e o processo Streamlit...")
-    ngrok.kill()
-    process.kill()
