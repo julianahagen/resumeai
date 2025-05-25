@@ -224,7 +224,7 @@ def process_duvida_input(duvida_aluno):
     if not st.session_state.agente_duvidas_obj:
         st.session_state.agente_duvidas_obj = criar_agente_duvidas()
         st.session_state.historico_duvidas += f"Aluno Dúvida: {duvida_aluno}\n"
-      entrada_para_duvidas = f"""
+        entrada_para_duvidas = f"""
  DÚVIDA DO ALUNO: {duvida_aluno}
  TÓPICO GERAL: {st.session_state.topico_estudo}
  PERFIL DO ALUNO: {st.session_state.perfil_do_aluno_sumarizado}
